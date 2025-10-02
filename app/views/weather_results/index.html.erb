@@ -1,0 +1,24 @@
+<%= turbo_stream_from :weather_results %>
+
+<div class="mx-auto max-w-5xl space-y-8 py-10">
+  <header class="space-y-2 text-center">
+    <h1 class="text-3xl font-bold">NASA Space Apps Weather Dashboard</h1>
+    <p class="text-gray-600">Submit a location and date to forecast extreme weather probabilities powered by the Python modeling module.</p>
+  </header>
+
+  <section class="rounded-lg border p-6 shadow-sm">
+    <h2 class="text-xl font-semibold">Run a new analysis</h2>
+    <%= render "form" %>
+  </section>
+
+  <section>
+    <h2 class="mb-4 text-xl font-semibold">Recent results</h2>
+    <div id="weather_results" class="space-y-4">
+      <% if @weather_results.any? %>
+        <%= render @weather_results %>
+      <% else %>
+        <p class="text-gray-500">No analyses yet. Submit your first query above.</p>
+      <% end %>
+    </div>
+  </section>
+</div>

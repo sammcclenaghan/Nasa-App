@@ -1,0 +1,31 @@
+<%= form_with model: @weather_result, url: weather_results_path, class: "space-y-4" do |form| %>
+  <% if @weather_result.errors.any? %>
+    <div class="rounded-md bg-red-100 p-4 text-red-800">
+      <h2 class="font-semibold">Please fix the following:</h2>
+      <ul class="list-disc pl-6">
+        <% @weather_result.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= form.label :lat, "Latitude", class: "block text-sm font-medium" %>
+    <%= form.number_field :lat, step: 0.000001, class: "mt-1 w-full rounded-md border px-3 py-2" %>
+  </div>
+
+  <div>
+    <%= form.label :lon, "Longitude", class: "block text-sm font-medium" %>
+    <%= form.number_field :lon, step: 0.000001, class: "mt-1 w-full rounded-md border px-3 py-2" %>
+  </div>
+
+  <div>
+    <%= form.label :query_date, "Query Date", class: "block text-sm font-medium" %>
+    <%= form.date_field :query_date, class: "mt-1 w-full rounded-md border px-3 py-2", value: @weather_result.query_date %>
+  </div>
+
+  <div>
+    <%= form.submit "Run Weather Model", class: "rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700" %>
+  </div>
+<% end %>

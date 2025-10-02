@@ -1,0 +1,27 @@
+<%= turbo_frame_tag dom_id(weather_result) do %>
+  <article class="rounded-lg border p-4 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 class="text-lg font-semibold">Lat: <%= weather_result.lat %>, Lon: <%= weather_result.lon %></h3>
+        <p class="text-sm text-gray-600">Day of year: <%= weather_result.day_of_year %></p>
+      </div>
+      <span class="rounded-full px-3 py-1 text-sm font-medium <%= status_badge_classes(weather_result.status) %>">
+        <%= weather_result.status.titleize %>
+      </span>
+    </div>
+
+    <% if weather_result.completed? && weather_result.data.present? %>
+      <div class="mt-4 space-y-3" data-controller="weather-chart" data-weather-chart-probabilities-value="<%= weather_result.probabilities_for_chart.to_json %>">
+        <canvas data-weather-chart-target="canvas" height="200"></canvas>
+        <div class="flex gap-3 text-sm">
+          <%= link_to "Download JSON", weather_result_path(weather_result, format: :json), class: "text-blue-600 hover:underline" %>
+          <%= link_to "Download CSV", weather_result_path(weather_result, format: :csv), class: "text-blue-600 hover:underline" %>
+        </div>
+      </div>
+    <% elsif weather_result.failed? %>
+      <p class="mt-4 text-sm text-red-600">Failed to compute: <%= weather_result.error_message || "Unknown error" %></p>
+    <% else %>
+      <p class="mt-4 text-sm text-gray-600">We are processing your request. This card will update automatically.</p>
+    <% end %>
+  </article>
+<% end %>

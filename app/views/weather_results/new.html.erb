@@ -1,0 +1,14 @@
+<div class="mx-auto max-w-3xl space-y-6 py-10">
+  <header class="space-y-2">
+    <h1 class="text-3xl font-bold">Request Weather Probabilities</h1>
+    <p class="text-gray-600">Enter a latitude, longitude, and date to queue a NASA-style weather probability run.</p>
+  </header>
+
+  <section class="rounded-lg border p-6 shadow-sm">
+    <%= render "form" %>
+  </section>
+
+  <div>
+    <%= link_to "Back to dashboard", weather_results_path, class: "text-blue-600 hover:underline" %>
+  </div>
+</div>

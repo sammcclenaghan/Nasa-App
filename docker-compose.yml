@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    command: ./bin/rails server -b 0.0.0.0 -p 3000
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: mysql2://root:password@db:3306/nasa_app_development
+      REDIS_URL: redis://redis:6379/0
+      PYTHON_BIN: /rails/.venv/bin/python
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build: .
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: mysql2://root:password@db:3306/nasa_app_development
+      REDIS_URL: redis://redis:6379/0
+      PYTHON_BIN: /rails/.venv/bin/python
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: nasa_app_development
+      MYSQL_PASSWORD: password
+      MYSQL_USER: nasa
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.2
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:
+  redis_data:

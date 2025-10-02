@@ -1,7 +1,7 @@
 class WeatherResult < ApplicationRecord
   attr_accessor :query_date
 
-  enum status: { pending: 0, processing: 1, completed: 2, failed: 3 }
+  enum :status, { pending: 0, processing: 1, completed: 2, failed: 3 }
 
   validates :lat, :lon, :day_of_year, presence: true
   validates :lat, :lon, numericality: true

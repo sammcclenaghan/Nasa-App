@@ -20,10 +20,10 @@ class WeatherProbabilityJob < ApplicationJob
   private
 
   def fetch_probabilities(weather_result)
-    command = [python_executable, Rails.root.join("lib", "weather_model.py").to_s,
+    command = [ python_executable, Rails.root.join("lib", "weather_model.py").to_s,
                "--lat", weather_result.lat.to_f.to_s,
                "--lon", weather_result.lon.to_f.to_s,
-               "--day", weather_result.day_of_year.to_s]
+               "--day", weather_result.day_of_year.to_s ]
 
     stdout, stderr, status = Open3.capture3({ "PYTHONPATH" => Rails.root.join("lib").to_s }, *command)
 

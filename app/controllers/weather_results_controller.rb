@@ -2,7 +2,7 @@ require "csv"
 
 class WeatherResultsController < ApplicationController
   helper WeatherResultsHelper
-  before_action :set_weather_result, only: [:show]
+  before_action :set_weather_result, only: [ :show ]
 
   def index
     @weather_results = WeatherResult.recent_first
@@ -60,9 +60,9 @@ class WeatherResultsController < ApplicationController
   def build_csv(weather_result)
     probabilities = weather_result.probabilities_for_chart || {}
     CSV.generate do |csv|
-      csv << ["metric", "probability"]
+      csv << [ "metric", "probability" ]
       probabilities.each do |metric, probability|
-        csv << [metric, probability]
+        csv << [ metric, probability ]
       end
     end
   end

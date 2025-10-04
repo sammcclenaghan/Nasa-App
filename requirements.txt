@@ -1,3 +1,9 @@
 numpy==1.26.4
 pandas==2.2.2
 scipy==1.11.4
+# MERRA-2 and NASA data access
+requests==2.32.3
+netcdf4==1.7.1
+xarray==2024.6.0
+opendap-protocol==0.4.1
+pydap==3.4.0

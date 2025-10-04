@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
-import { Chart, registerables } from "chart.js"
+import Chart from "chart.js"
 
-Chart.register(...registerables)
+// Chart.js from CDN is already registered
 
 export default class extends Controller {
   static targets = ["canvas"]

@@ -3,26 +3,40 @@ version: "3.9"
 services:
   web:
     build: .
-    command: ./bin/rails server -b 0.0.0.0 -p 3000
+    command: bash -c "python3 -m venv /rails/.venv && /rails/.venv/bin/pip install --no-cache-dir --upgrade pip && /rails/.venv/bin/pip install --no-cache-dir -r requirements.txt && ./bin/rails server -b 0.0.0.0 -p 3000"
     environment:
       RAILS_ENV: development
       DATABASE_URL: mysql2://root:password@db:3306/nasa_app_development
       REDIS_URL: redis://redis:6379/0
       PYTHON_BIN: /rails/.venv/bin/python
+      EARTHDATA_USERNAME: samcclenaghan
+      EARTHDATA_PASSWORD: TLJR%#zwn8i!UT
     ports:
       - "3000:3000"
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+      - /rails/tmp
+      - /rails/log
     depends_on:
       - db
       - redis
 
   worker:
     build: .
-    command: bundle exec sidekiq -C config/sidekiq.yml
+    command: bash -c "python3 -m venv /rails/.venv && /rails/.venv/bin/pip install --no-cache-dir --upgrade pip && /rails/.venv/bin/pip install --no-cache-dir -r requirements.txt && bundle exec sidekiq -C config/sidekiq.yml"
     environment:
       RAILS_ENV: development
       DATABASE_URL: mysql2://root:password@db:3306/nasa_app_development
       REDIS_URL: redis://redis:6379/0
       PYTHON_BIN: /rails/.venv/bin/python
+      EARTHDATA_USERNAME: ${EARTHDATA_USERNAME}
+      EARTHDATA_PASSWORD: ${EARTHDATA_PASSWORD}
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+      - /rails/tmp
+      - /rails/log
     depends_on:
       - db
       - redis

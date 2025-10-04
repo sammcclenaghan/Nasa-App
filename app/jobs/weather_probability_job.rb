@@ -27,9 +27,26 @@ class WeatherProbabilityJob < ApplicationJob
 
     stdout, stderr, status = Open3.capture3({ "PYTHONPATH" => Rails.root.join("lib").to_s }, *command)
 
-    raise "Python model failed: #{stderr}" unless status.success?
+    # Debug output
+    Rails.logger.info("Python command: #{command.join(' ')}")
+    Rails.logger.info("Python stdout: '#{stdout}'")
+    Rails.logger.info("Python stderr: '#{stderr}'")
+    Rails.logger.info("Python exit status: #{status.exitstatus}")
 
-    JSON.parse(stdout)
+    # Check if we got any output
+    if stdout.empty?
+      raise "Python script produced no output. Stderr: #{stderr}"
+    end
+
+    # Parse JSON even if the command failed (Python script now returns JSON on error)
+    result = JSON.parse(stdout)
+    
+    # Check if the result contains an error
+    if result["error"]
+      raise "Python model failed: #{result['error']}"
+    end
+
+    result
   end
 
   def python_executable

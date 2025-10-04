@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  web:
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+      - /rails/tmp
+      - /rails/log
+      - /rails/public/assets
+    environment:
+      - RAILS_ENV=development
+      - RAILS_LOG_TO_STDOUT=true
+    stdin_open: true
+    tty: true
+
+  worker:
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+      - /rails/tmp
+      - /rails/log
+    environment:
+      - RAILS_ENV=development
+      - RAILS_LOG_TO_STDOUT=true

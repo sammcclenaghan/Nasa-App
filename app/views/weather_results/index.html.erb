@@ -11,17 +11,21 @@
     <%= render "form" %>
   </section>
 
-  <section class="rounded-lg border p-6 shadow-sm">
-    <h2 class="mb-4 text-xl font-semibold">Interactive Map</h2>
-    <p class="mb-4 text-gray-600">Click anywhere on the map to add markers. This map uses Humanitarian OpenStreetMap tiles.</p>
-    <div id="map" 
-         data-controller="map" 
-         data-map-latitude-value="40.7128" 
-         data-map-longitude-value="-74.0060" 
-         data-map-zoom-value="10"
-         style="height: 400px; width: 100%;">
-    </div>
-  </section>
+    <section class="rounded-lg border p-6 shadow-sm">
+      <h2 class="mb-4 text-xl font-semibold">Interactive Map</h2>
+      <p class="mb-4 text-gray-600">
+        Use the rectangle tool in the top-right corner to draw a rectangle on the map. 
+        The latitude and longitude fields below will be automatically populated with the center coordinates of your rectangle.
+        This map uses Humanitarian OpenStreetMap tiles.
+      </p>
+      <div id="map"
+           data-controller="map"
+           data-map-latitude-value="40.7128"
+           data-map-longitude-value="-74.0060"
+           data-map-zoom-value="10"
+           style="height: 400px; width: 100%;">
+      </div>
+    </section>
 
   <section>
     <h2 class="mb-4 text-xl font-semibold">Recent results</h2>

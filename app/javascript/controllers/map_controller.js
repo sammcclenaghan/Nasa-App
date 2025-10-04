@@ -50,14 +50,49 @@ export default class extends Controller {
         maxZoom: 19
       }).addTo(this.map)
 
-      // Add a marker at the center
-      this.marker = L.marker([this.latitudeValue, this.longitudeValue]).addTo(this.map)
-        .bindPopup('A pretty CSS3 popup.<br> Easily customizable.')
-        .openPopup()
+      // Initialize the feature group to store editable layers
+      this.drawnItems = new L.FeatureGroup()
+      this.map.addLayer(this.drawnItems)
 
-      // Add click event to add markers
-      this.map.on('click', (e) => {
-        this.addMarker(e.latlng)
+      // Initialize the draw control and pass it the FeatureGroup of editable layers
+      this.drawControl = new L.Control.Draw({
+        edit: {
+          featureGroup: this.drawnItems
+        },
+        draw: {
+          // Disable all drawing tools except rectangle
+          polygon: false,
+          polyline: false,
+          circle: false,
+          marker: false,
+          circlemarker: false,
+          rectangle: {
+            shapeOptions: {
+              color: '#ff7800',
+              weight: 2,
+              fillOpacity: 0.2
+            }
+          }
+        }
+      })
+      this.map.addControl(this.drawControl)
+
+      // Add event listeners for drawing
+      this.map.on(L.Draw.Event.CREATED, (event) => {
+        const layer = event.layer
+        this.drawnItems.addLayer(layer)
+        this.updateFormFromRectangle(layer)
+      })
+
+      this.map.on(L.Draw.Event.EDITED, (event) => {
+        const layers = event.layers
+        layers.eachLayer((layer) => {
+          this.updateFormFromRectangle(layer)
+        })
+      })
+
+      this.map.on(L.Draw.Event.DELETED, (event) => {
+        this.clearFormFields()
       })
       
       console.log('Map initialized successfully!')
@@ -88,5 +123,54 @@ export default class extends Controller {
       L.marker([lat, lng]).addTo(this.map)
         .bindPopup(popupText || `Lat: ${lat}, Lng: ${lng}`)
     }
+  }
+
+  updateFormFromRectangle(rectangle) {
+    try {
+      const bounds = rectangle.getBounds()
+      const southWest = bounds.getSouthWest()
+      const northEast = bounds.getNorthEast()
+      
+      // Calculate center point
+      const centerLat = (southWest.lat + northEast.lat) / 2
+      const centerLng = (southWest.lng + northEast.lng) / 2
+      
+      // Update form fields
+      const latField = document.querySelector('input[name="weather_result[lat]"]')
+      const lngField = document.querySelector('input[name="weather_result[lon]"]')
+      
+      if (latField) latField.value = centerLat.toFixed(6)
+      if (lngField) lngField.value = centerLng.toFixed(6)
+      
+      console.log('Form updated with rectangle bounds:', {
+        center: { lat: centerLat, lng: centerLng },
+        bounds: {
+          southWest: { lat: southWest.lat, lng: southWest.lng },
+          northEast: { lat: northEast.lat, lng: northEast.lng }
+        }
+      })
+      
+      // Show a popup with the bounds info
+      const L = window.L
+      rectangle.bindPopup(`
+        <strong>Rectangle Bounds:</strong><br>
+        Center: ${centerLat.toFixed(6)}, ${centerLng.toFixed(6)}<br>
+        SW: ${southWest.lat.toFixed(6)}, ${southWest.lng.toFixed(6)}<br>
+        NE: ${northEast.lat.toFixed(6)}, ${northEast.lng.toFixed(6)}
+      `).openPopup()
+      
+    } catch (error) {
+      console.error('Error updating form from rectangle:', error)
+    }
+  }
+
+  clearFormFields() {
+    const latField = document.querySelector('input[name="weather_result[lat]"]')
+    const lngField = document.querySelector('input[name="weather_result[lon]"]')
+    
+    if (latField) latField.value = ''
+    if (lngField) lngField.value = ''
+    
+    console.log('Form fields cleared')
   }
 }

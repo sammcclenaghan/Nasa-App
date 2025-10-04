@@ -1,15 +1,30 @@
-"""Simple weather probability generator for NASA Space Apps demo."""
+"""Enhanced weather probability generator for NASA Space Apps with MERRA-2 data integration."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict
 
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
+
+# Add lib directory to path for local imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from merra2_data_service import MERRA2DataService
+    MERRA2_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: MERRA-2 service not available: {e}")
+    MERRA2_AVAILABLE = False
+
+
 
 
 METRICS = [
@@ -29,11 +44,44 @@ class WeatherQuery:
 
 
 def get_weather_probabilities(lat: float, lon: float, day: int) -> Dict[str, object]:
-    """Return a deterministic set of dummy probability data for the dashboard."""
+    """Return weather probability data using MERRA-2 data when available, fallback to synthetic data."""
     query = WeatherQuery(lat=float(lat), lon=float(lon), day_of_year=int(day))
     validate_day_of_year(query.day_of_year)
 
-    # Seed RNG so the output is deterministic for a given query
+    # Try to use MERRA-2 data if available
+    if MERRA2_AVAILABLE:
+        try:
+            # Convert day of year to approximate date (using current year)
+            from datetime import datetime, timedelta
+            current_year = datetime.now().year
+            target_date = datetime(current_year, 1, 1) + timedelta(days=day - 1)
+            
+            service = MERRA2DataService()
+            result = service.get_weather_probabilities(query.lat, query.lon, target_date)
+            
+            # Convert probability keys to match expected format
+            probabilities = {}
+            for key, value in result['probabilities'].items():
+                # Map MERRA-2 keys to expected format
+                mapped_key = key.replace('_', ' ')
+                probabilities[mapped_key] = float(value)
+            
+            return {
+                "meta": {
+                    "lat": query.lat,
+                    "lon": query.lon,
+                    "day_of_year": query.day_of_year,
+                    "data_source": result['meta']['data_source'],
+                    "date": target_date.strftime('%Y-%m-%d')
+                },
+                "probabilities": probabilities,
+                "raw_merra2_data": result.get('raw_data', {})
+            }
+            
+        except Exception as e:
+            print(f"MERRA-2 data access failed, using synthetic data: {e}")
+    
+    # Fallback to synthetic deterministic data
     seed = int(abs(query.lat * 1000) + abs(query.lon * 1000) + query.day_of_year)
     rng = np.random.default_rng(seed)
 
@@ -51,6 +99,7 @@ def get_weather_probabilities(lat: float, lon: float, day: int) -> Dict[str, obj
             "lat": query.lat,
             "lon": query.lon,
             "day_of_year": query.day_of_year,
+            "data_source": "synthetic"
         },
         "probabilities": series.to_dict(),
     }

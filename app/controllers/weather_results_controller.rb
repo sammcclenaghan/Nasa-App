@@ -54,7 +54,7 @@ class WeatherResultsController < ApplicationController
 
   def compute_day_of_year
     date = params[:weather_result][:query_date].presence || Date.current.to_s
-    Date.parse(date).yday
+    Date.parse(date)
   end
 
   def build_csv(weather_result)

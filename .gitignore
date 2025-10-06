@@ -6,7 +6,6 @@
 
 # Ignore bundler config.
 /.bundle
-/lib/
 
 # Ignore all environment files.
 /.env*

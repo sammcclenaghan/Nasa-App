@@ -86,20 +86,34 @@ def probability_calculator(data) -> [float]:
     windspeed_threshold = 20
     rainy_threshold = 1
 
+<<<<<<< HEAD
     # Extract temperature data and remove NaN values
     min_temp = data["tmin"].dropna()
     max_temp = data["tmax"].dropna()
     prcp = data["prcp"].dropna()
     windspeed = data["wspd"].dropna()
+=======
+
+    #Extract temperature data and remove NaN values
+    min_temp = data['tmin'].dropna()
+    max_temp = data['tmax'].dropna()
+    prcp  = data['prcp'].dropna()
+    windspeed = data['wspd'].dropna()
+>>>>>>> 926b1cc2798663dcafc8da91df2bd8ce132b5d2e
 
     # Creating binary values for rainy days
     rainy_days = [1 if rain_amount >= rainy_threshold else 0 for rain_amount in prcp]
 
+<<<<<<< HEAD
     # computing distributions
+=======
+    #Computing normal distributions
+>>>>>>> 926b1cc2798663dcafc8da91df2bd8ce132b5d2e
     max_mu, max_sigma = scipy.stats.norm.fit(max_temp)
     wind_mu, wind_sigma = scipy.stats.norm.fit(windspeed)
     cold_mu, cold_sigma = scipy.stats.norm.fit(min_temp)
 
+<<<<<<< HEAD
     # Computing Probabilities -> Could make these a for loop
     probabilities.append(
         np.around(
@@ -140,6 +154,13 @@ def probability_calculator(data) -> [float]:
             1,
         )
     )
+=======
+    probabilities.append(np.around(np.clip(1 - scipy.stats.norm.cdf(hot_threshold, loc=max_mu, scale=max_sigma),0,1) *100, 1))
+    probabilities.append(np.around(np.clip(scipy.stats.norm.cdf(cold_threshold, loc=cold_mu, scale=cold_sigma),0,1) *100, 1))
+    probabilities.append(np.around(np.clip(sum(rainy_days) / len(rainy_days),0,1) *100, 1))
+    probabilities.append(np.around(np.clip(1 -scipy.stats.norm.cdf(windspeed_threshold, loc=wind_mu, scale=wind_sigma),0,1) *100, 1))
+
+>>>>>>> 926b1cc2798663dcafc8da91df2bd8ce132b5d2e
     return probabilities
 
 
@@ -152,8 +173,13 @@ def get_weather_probabilities(
 
     # Get all historical data for this location
     daily_data = get_meteostat_data(float(lat), float(lon))
+<<<<<<< HEAD
 
     if daily_data is None or daily_data.empty:
+=======
+    
+    if daily_data is None:
+>>>>>>> 926b1cc2798663dcafc8da91df2bd8ce132b5d2e
         return {
             "meta": {
                 "lat": query.lat,
@@ -173,10 +199,14 @@ def get_weather_probabilities(
     matching_dates = daily_data[
         (daily_data.index.month == target_month) & (daily_data.index.day == target_day)
     ]
+    
     too_hot, too_cold, too_rainy, too_windy = probability_calculator(matching_dates)
 
+<<<<<<< HEAD
     # TODO: probabilities to 2 decimal places
 
+=======
+>>>>>>> 926b1cc2798663dcafc8da91df2bd8ce132b5d2e
     return {
         "meta": {
             "lat": query.lat,

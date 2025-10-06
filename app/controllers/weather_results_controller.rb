@@ -17,8 +17,9 @@ class WeatherResultsController < ApplicationController
 
   def create
     @weather_result = WeatherResult.new(weather_result_params)
-    @weather_result.query_date = params[:weather_result][:query_date]
-    @weather_result.day_of_year = compute_day_of_year
+    parsed_date = parse_query_date
+    @weather_result.query_date = parsed_date
+    @weather_result.day_of_year = parsed_date.yday
 
     if @weather_result.save
       WeatherProbabilityJob.perform_later(@weather_result.id)
@@ -49,12 +50,12 @@ class WeatherResultsController < ApplicationController
   end
 
   def weather_result_params
-    params.require(:weather_result).permit(:lat, :lon)
+    params.require(:weather_result).permit(:lat, :lon, :query_date)
   end
 
-  def compute_day_of_year
-    date = params[:weather_result][:query_date].presence || Date.current.to_s
-    Date.parse(date)
+  def parse_query_date
+    raw = params.dig(:weather_result, :query_date).presence || Date.current.to_s
+    Date.parse(raw)
   end
 
   def build_csv(weather_result)

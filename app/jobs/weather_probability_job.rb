@@ -20,29 +20,47 @@ class WeatherProbabilityJob < ApplicationJob
   private
 
   def fetch_probabilities(weather_result)
-    command = [ python_executable, Rails.root.join("lib", "weather_model.py").to_s,
-               "--lat", weather_result.lat.to_f.to_s,
-               "--lon", weather_result.lon.to_f.to_s,
-               "--datetime", weather_result.datetime.to_s ]
+    # Safely coerce query_date to a YYYY-MM-DD string (Python expects this exact format)
+    date_str = begin
+      d = weather_result.respond_to?(:query_date) ? weather_result.query_date : nil
+      d = Date.parse(d.to_s) unless d.is_a?(Date)
+      d.strftime("%Y-%m-%d")
+    rescue StandardError
+      Date.current.strftime("%Y-%m-%d")
+    end
+
+    command = [
+      python_executable,
+      Rails.root.join("lib", "weather_model.py").to_s,
+      "--lat", weather_result.lat.to_f.to_s,
+      "--lon", weather_result.lon.to_f.to_s,
+      "--datetime", date_str
+    ]
 
     stdout, stderr, status = Open3.capture3({ "PYTHONPATH" => Rails.root.join("lib").to_s }, *command)
 
-    # Debug output
-    Rails.logger.info("Python command: #{command.join(' ')}")
-    Rails.logger.info("Python stdout: '#{stdout}'")
-    Rails.logger.info("Python stderr: '#{stderr}'")
-    Rails.logger.info("Python exit status: #{status.exitstatus}")
+    Rails.logger.info("[WeatherProbabilityJob] Python command: #{command.join(' ')}")
+    Rails.logger.info("[WeatherProbabilityJob] Exit status: #{status.exitstatus}")
+    Rails.logger.info("[WeatherProbabilityJob] STDOUT (#{stdout.bytesize} bytes): #{stdout.truncate(500)}")
+    Rails.logger.info("[WeatherProbabilityJob] STDERR (#{stderr.bytesize} bytes): #{stderr.truncate(500)}")
 
-    # Check if we got any output
-    if stdout.empty?
-      raise "Python script produced no output. Stderr: #{stderr}"
+    raw_json = stdout
+
+    if raw_json.strip.empty?
+      if stderr.lstrip.start_with?("{")
+        raw_json = stderr
+      else
+        raise "Python script produced no JSON output (exit #{status.exitstatus}). Stderr:\n#{stderr}"
+      end
     end
 
-    # Parse JSON even if the command failed (Python script now returns JSON on error)
-    result = JSON.parse(stdout)
-    
-    # Check if the result contains an error
-    if result["error"]
+    begin
+      result = JSON.parse(raw_json)
+    rescue JSON::ParserError => e
+      raise "Failed to parse Python output as JSON: #{e.message}. Raw stdout: #{stdout.truncate(300)} | stderr: #{stderr.truncate(300)}"
+    end
+
+    if result.is_a?(Hash) && result["error"]
       raise "Python model failed: #{result['error']}"
     end
 

@@ -33,7 +33,8 @@ class WeatherQuery:
     lon: float
     user_datetime: str
 
-#Receives latitude, longitude and day of interest, returns a dataframe with all available data from nearest weatherstation
+
+# Receives latitude, longitude and day of interest, returns a dataframe with all available data from nearest weatherstation
 def get_meteostat_data(lat: float, lon: float):
     # Find the closest weather station and its date range
     stations = meteostat.Stations()
@@ -44,20 +45,26 @@ def get_meteostat_data(lat: float, lon: float):
     closest_station = None
     if not stations_data.empty:
         station_id, station = next(stations_data.iterrows())
-        distance_km = station.get('distance', 0) / 1000 if station.get('distance') else 0
+        distance_km = (
+            station.get("distance", 0) / 1000 if station.get("distance") else 0
+        )
         closest_station = {
-        "station_id": station_id,
-        "name": station.get('name', 'Unknown'),
-        "distance_km": round(distance_km, 2),
-        "start_date": station.get('daily_start').strftime('%Y-%m-%d') if station.get('daily_start') else None,
-        "end_date": station.get('daily_end').strftime('%Y-%m-%d') if station.get('daily_end') else None
+            "station_id": station_id,
+            "name": station.get("name", "Unknown"),
+            "distance_km": round(distance_km, 2),
+            "start_date": station.get("daily_start").strftime("%Y-%m-%d")
+            if station.get("daily_start")
+            else None,
+            "end_date": station.get("daily_end").strftime("%Y-%m-%d")
+            if station.get("daily_end")
+            else None,
         }
 
     if closest_station:
         # Fetch daily data only within the station's valid date range
         location = meteostat.Point(lat, lon)
-        start_date = datetime.strptime(closest_station['start_date'], '%Y-%m-%d')
-        end_date = datetime.strptime(closest_station['end_date'], '%Y-%m-%d')
+        start_date = datetime.strptime(closest_station["start_date"], "%Y-%m-%d")
+        end_date = datetime.strptime(closest_station["end_date"], "%Y-%m-%d")
 
         # Fetch data within the valid range
         data = meteostat.Daily(location, start_date, end_date)
@@ -68,51 +75,84 @@ def get_meteostat_data(lat: float, lon: float):
         daily_data = None
 
     return daily_data
- 
+
 
 def probability_calculator(data) -> [float]:
-    probabilities = [] 
+    probabilities = []
 
-    #thresholds for the model
+    # thresholds for the model
     hot_threshold = 30
     cold_threshold = 0
     windspeed_threshold = 20
     rainy_threshold = 1
 
-
     # Extract temperature data and remove NaN values
-    min_temp = data['tmin'].dropna()
-    max_temp = data['tmax'].dropna()
-    prcp  = data['prcp'].dropna()
-    windspeed = data['wspd'].dropna()
+    min_temp = data["tmin"].dropna()
+    max_temp = data["tmax"].dropna()
+    prcp = data["prcp"].dropna()
+    windspeed = data["wspd"].dropna()
 
-    #Creating binary values for rainy days
+    # Creating binary values for rainy days
     rainy_days = [1 if rain_amount >= rainy_threshold else 0 for rain_amount in prcp]
 
-        
-
-    #computing distributions
+    # computing distributions
     max_mu, max_sigma = scipy.stats.norm.fit(max_temp)
     wind_mu, wind_sigma = scipy.stats.norm.fit(windspeed)
     cold_mu, cold_sigma = scipy.stats.norm.fit(min_temp)
 
-
-    #Computing Probabilities -> Could make these a for loop
-    probabilities.append(np.around(np.clip(1 - scipy.stats.norm.cdf(hot_threshold, loc=max_mu, scale=max_sigma),0,1)*100, 1))
-    probabilities.append(np.around(np.clip(scipy.stats.norm.cdf(cold_threshold, loc=cold_mu, scale=cold_sigma),0,1)*100, 1))
-    probabilities.append(np.around(np.clip(sum(rainy_days) / len(rainy_days),0,1)*100, 1))
-    probabilities.append(np.around(np.clip(1 -scipy.stats.norm.cdf(windspeed_threshold, loc=wind_mu, scale=wind_sigma),0,1)*100, 1))
+    # Computing Probabilities -> Could make these a for loop
+    probabilities.append(
+        np.around(
+            np.clip(
+                1 - scipy.stats.norm.cdf(hot_threshold, loc=max_mu, scale=max_sigma),
+                0,
+                1,
+            )
+            * 100,
+            1,
+        )
+    )
+    probabilities.append(
+        np.around(
+            np.clip(
+                scipy.stats.norm.cdf(cold_threshold, loc=cold_mu, scale=cold_sigma),
+                0,
+                1,
+            )
+            * 100,
+            1,
+        )
+    )
+    probabilities.append(
+        np.around(np.clip(sum(rainy_days) / len(rainy_days), 0, 1) * 100, 1)
+    )
+    probabilities.append(
+        np.around(
+            np.clip(
+                1
+                - scipy.stats.norm.cdf(
+                    windspeed_threshold, loc=wind_mu, scale=wind_sigma
+                ),
+                0,
+                1,
+            )
+            * 100,
+            1,
+        )
+    )
     return probabilities
 
 
-#Takes latitude, longitude, day of year, and returns various probabilities of interest
-def get_weather_probabilities(lat: float, lon: float, user_datetime) -> Dict[str, object]:
-    query = WeatherQuery(lat=float(lat), lon=float(lon), user_datetime=str(user_datetime))
+# Takes latitude, longitude, day of year, and returns various probabilities of interest
+def get_weather_probabilities(
+    lat: float, lon: float, user_datetime: str
+) -> Dict[str, object]:
+    query = WeatherQuery(lat=float(lat), lon=float(lon), user_datetime=user_datetime)
     validate_user_datetime(query.user_datetime)
 
     # Get all historical data for this location
     daily_data = get_meteostat_data(float(lat), float(lon))
-    
+
     if daily_data is None or daily_data.empty:
         return {
             "meta": {
@@ -120,25 +160,23 @@ def get_weather_probabilities(lat: float, lon: float, user_datetime) -> Dict[str
                 "lon": query.lon,
                 "user_datetime": query.user_datetime,
                 "data_source": "meteostat",
-                "error": "No data available for this location"
+                "error": "No data available for this location",
             }
         }
-    
+
     # Parse the user's target date
-    target_date = datetime.strptime(query.user_datetime, '%Y-%m-%d')
+    target_date = datetime.strptime(query.user_datetime, "%Y-%m-%d")
     target_month = target_date.month
     target_day = target_date.day
-    
+
     # Filter data for the same month and day across all years
     matching_dates = daily_data[
-        (daily_data.index.month == target_month) & 
-        (daily_data.index.day == target_day)
+        (daily_data.index.month == target_month) & (daily_data.index.day == target_day)
     ]
     too_hot, too_cold, too_rainy, too_windy = probability_calculator(matching_dates)
 
-    #TODO: probabilities to 2 decimal places
+    # TODO: probabilities to 2 decimal places
 
-    
     return {
         "meta": {
             "lat": query.lat,
@@ -151,18 +189,17 @@ def get_weather_probabilities(lat: float, lon: float, user_datetime) -> Dict[str
             "hot_prob": too_hot,
             "cold_prob": too_cold,
             "too_rainy": too_rainy,
-            "too_windy": too_windy
+            "too_windy": too_windy,
         }
     }
 
 
-#Ensuring user input is valid
+# Ensuring user input is valid
 def validate_user_datetime(user_datetime: str) -> None:
     try:
-        datetime.strptime(user_datetime, '%Y-%m-%d')
+        datetime.strptime(user_datetime, "%Y-%m-%d")
     except ValueError:
         raise ValueError("datetime must be in YYYY-MM-DD format")
-    
 
 
 def parse_args() -> argparse.Namespace:

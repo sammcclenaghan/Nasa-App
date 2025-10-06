@@ -1,4 +1,4 @@
-"""Enhanced weather probability generator for NASA Space Apps with MERRA-2 data integration."""
+"""Enhanced weather probability generator for NASA Space Apps with data integration."""
 
 from __future__ import annotations
 
@@ -9,22 +9,13 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict
-
+import meteostat
 import numpy as np
 import pandas as pd
-from scipy.special import softmax
+import scipy
 
 # Add lib directory to path for local imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-try:
-    from merra2_data_service import MERRA2DataService
-    MERRA2_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: MERRA-2 service not available: {e}")
-    MERRA2_AVAILABLE = False
-
-
 
 
 METRICS = [
@@ -40,102 +31,151 @@ METRICS = [
 class WeatherQuery:
     lat: float
     lon: float
-    day_of_year: int
+    user_datetime: str
+
+#Receives latitude, longitude and day of interest, returns a dataframe with all available data from nearest weatherstation
+def get_meteostat_data(lat: float, lon: float):
+    # Find the closest weather station and its date range
+    stations = meteostat.Stations()
+    stations = stations.nearby(lat, lon)
+    stations_data = stations.fetch(limit=1)  # Get only the closest station
+
+    # Get information about the closest station
+    closest_station = None
+    if not stations_data.empty:
+        station_id, station = next(stations_data.iterrows())
+        distance_km = station.get('distance', 0) / 1000 if station.get('distance') else 0
+        closest_station = {
+        "station_id": station_id,
+        "name": station.get('name', 'Unknown'),
+        "distance_km": round(distance_km, 2),
+        "start_date": station.get('daily_start').strftime('%Y-%m-%d') if station.get('daily_start') else None,
+        "end_date": station.get('daily_end').strftime('%Y-%m-%d') if station.get('daily_end') else None
+        }
+
+    if closest_station:
+        # Fetch daily data only within the station's valid date range
+        location = meteostat.Point(lat, lon)
+        start_date = datetime.strptime(closest_station['start_date'], '%Y-%m-%d')
+        end_date = datetime.strptime(closest_station['end_date'], '%Y-%m-%d')
+
+        # Fetch data within the valid range
+        data = meteostat.Daily(location, start_date, end_date)
+        daily_data = data.fetch()
+
+    else:
+        print("No weather stations found near the specified coordinates.")
+        daily_data = None
+
+    return daily_data
+ 
+
+def probability_calculator(data) -> [float]:
+    probabilities = [] 
+
+    #thresholds for the model
+    hot_threshold = 30
+    cold_threshold = 0
+    windspeed_threshold = 20
+    rainy_threshold = 1
 
 
-def get_weather_probabilities(lat: float, lon: float, day: int) -> Dict[str, object]:
-    """Return weather probability data using MERRA-2 data when available, fallback to synthetic data."""
-    query = WeatherQuery(lat=float(lat), lon=float(lon), day_of_year=int(day))
-    validate_day_of_year(query.day_of_year)
+    # Extract temperature data and remove NaN values
+    min_temp = data['tmin'].dropna()
+    max_temp = data['tmax'].dropna()
+    prcp  = data['prcp'].dropna()
+    windspeed = data['wspd'].dropna()
 
-    # Try to use MERRA-2 data if available
-    if MERRA2_AVAILABLE:
-        try:
-            # Convert day of year to approximate date (using current year)
-            from datetime import datetime, timedelta
-            current_year = datetime.now().year
-            target_date = datetime(current_year, 1, 1) + timedelta(days=day - 1)
-            
-            service = MERRA2DataService()
-            result = service.get_weather_probabilities(query.lat, query.lon, target_date)
-            
-            # Convert probability keys to match expected format
-            probabilities = {}
-            for key, value in result['probabilities'].items():
-                # Map MERRA-2 keys to expected format
-                mapped_key = key.replace('_', ' ')
-                probabilities[mapped_key] = float(value)
-            
-            return {
-                "meta": {
-                    "lat": query.lat,
-                    "lon": query.lon,
-                    "day_of_year": query.day_of_year,
-                    "data_source": result['meta']['data_source'],
-                    "date": target_date.strftime('%Y-%m-%d')
-                },
-                "probabilities": probabilities,
-                "raw_merra2_data": result.get('raw_data', {})
-            }
-            
-        except Exception as e:
-            print(f"MERRA-2 data access failed, using synthetic data: {e}")
+    #Creating binary values for rainy days
+    rainy_days = [1 if rain_amount >= rainy_threshold else 0 for rain_amount in prcp]
+
+        
+
+    #computing distributions
+    max_mu, max_sigma = scipy.stats.norm.fit(max_temp)
+    wind_mu, wind_sigma = scipy.stats.norm.fit(windspeed)
+    cold_mu, cold_sigma = scipy.stats.norm.fit(min_temp)
+
+
+    #Computing Probabilities -> Could make these a for loop
+    probabilities.append(np.around(np.clip(1 - scipy.stats.norm.cdf(hot_threshold, loc=max_mu, scale=max_sigma),0,1)*100, 1))
+    probabilities.append(np.around(np.clip(scipy.stats.norm.cdf(cold_threshold, loc=cold_mu, scale=cold_sigma),0,1)*100, 1))
+    probabilities.append(np.around(np.clip(sum(rainy_days) / len(rainy_days),0,1)*100, 1))
+    probabilities.append(np.around(np.clip(1 -scipy.stats.norm.cdf(windspeed_threshold, loc=wind_mu, scale=wind_sigma),0,1)*100, 1))
+    return probabilities
+
+
+#Takes latitude, longitude, day of year, and returns various probabilities of interest
+def get_weather_probabilities(lat: float, lon: float, user_datetime) -> Dict[str, object]:
+    query = WeatherQuery(lat=float(lat), lon=float(lon), user_datetime=str(user_datetime))
+    validate_user_datetime(query.user_datetime)
+
+    # Get all historical data for this location
+    daily_data = get_meteostat_data(float(lat), float(lon))
     
-    # Fallback to synthetic deterministic data
-    seed = int(abs(query.lat * 1000) + abs(query.lon * 1000) + query.day_of_year)
-    rng = np.random.default_rng(seed)
+    if daily_data is None or daily_data.empty:
+        return {
+            "meta": {
+                "lat": query.lat,
+                "lon": query.lon,
+                "user_datetime": query.user_datetime,
+                "data_source": "meteostat",
+                "error": "No data available for this location"
+            }
+        }
+    
+    # Parse the user's target date
+    target_date = datetime.strptime(query.user_datetime, '%Y-%m-%d')
+    target_month = target_date.month
+    target_day = target_date.day
+    
+    # Filter data for the same month and day across all years
+    matching_dates = daily_data[
+        (daily_data.index.month == target_month) & 
+        (daily_data.index.day == target_day)
+    ]
+    too_hot, too_cold, too_rainy, too_windy = probability_calculator(matching_dates)
 
-    raw_scores = rng.normal(loc=0.0, scale=1.0, size=len(METRICS))
-    seasonal_adjustment = seasonal_component(query.day_of_year)
-    adjusted_scores = raw_scores + seasonal_adjustment
+    #TODO: probabilities to 2 decimal places
 
-    probabilities = softmax(adjusted_scores) * 100.0
-    rounded = np.round(probabilities, 2)
-
-    series = pd.Series(data=rounded, index=METRICS)
-
+    
     return {
         "meta": {
             "lat": query.lat,
             "lon": query.lon,
-            "day_of_year": query.day_of_year,
-            "data_source": "synthetic"
-        },
-        "probabilities": series.to_dict(),
+            "user_datetime": query.user_datetime,
+            "target_month": target_month,
+            "target_day": target_day,
+            "historical_records_found": len(matching_dates),
+            "data_source": "meteostat",
+            "hot_prob": too_hot,
+            "cold_prob": too_cold,
+            "too_rainy": too_rainy,
+            "too_windy": too_windy
+        }
     }
 
 
-def seasonal_component(day_of_year: int) -> np.ndarray:
-    # Model a simple cyclical seasonal pattern using sine and cosine waves.
-    angle = (2 * np.pi * day_of_year) / 365.0
-    seasonal = np.array(
-        [
-            np.sin(angle),
-            np.cos(angle),
-            np.sin(angle + np.pi / 4),
-            np.cos(angle + np.pi / 2),
-            np.sin(angle + np.pi),
-        ]
-    )
-    return seasonal
-
-
-def validate_day_of_year(day: int) -> None:
-    if not 1 <= int(day) <= 366:
-        raise ValueError("day must be between 1 and 366")
+#Ensuring user input is valid
+def validate_user_datetime(user_datetime: str) -> None:
+    try:
+        datetime.strptime(user_datetime, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError("datetime must be in YYYY-MM-DD format")
+    
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate weather probabilities")
     parser.add_argument("--lat", type=float, required=True)
     parser.add_argument("--lon", type=float, required=True)
-    parser.add_argument("--day", type=int, required=True)
+    parser.add_argument("--datetime", type=str, required=True)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    result = get_weather_probabilities(args.lat, args.lon, args.day)
+    result = get_weather_probabilities(args.lat, args.lon, args.datetime)
     print(json.dumps(result))
 
 

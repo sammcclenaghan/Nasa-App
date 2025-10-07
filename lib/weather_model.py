@@ -95,7 +95,7 @@ def probability_calculator(data) -> [float]:
     # Creating binary values for rainy days
     rainy_days = [1 if rain_amount >= rainy_threshold else 0 for rain_amount in prcp]
 
-    # computing distributions
+    # Computing normal distributions
     max_mu, max_sigma = scipy.stats.norm.fit(max_temp)
     wind_mu, wind_sigma = scipy.stats.norm.fit(windspeed)
     cold_mu, cold_sigma = scipy.stats.norm.fit(min_temp)
@@ -140,6 +140,7 @@ def probability_calculator(data) -> [float]:
             1,
         )
     )
+
     return probabilities
 
 
@@ -173,6 +174,7 @@ def get_weather_probabilities(
     matching_dates = daily_data[
         (daily_data.index.month == target_month) & (daily_data.index.day == target_day)
     ]
+
     too_hot, too_cold, too_rainy, too_windy = probability_calculator(matching_dates)
 
     # TODO: probabilities to 2 decimal places

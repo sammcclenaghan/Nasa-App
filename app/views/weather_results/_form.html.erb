@@ -22,7 +22,7 @@
 
   <div>
     <%= form.label :query_date, "Query Date", class: "block text-sm font-medium" %>
-    <%= form.date_field :query_date, class: "mt-1 w-full rounded-md border px-3 py-2", value: @weather_result.query_date %>
+    <%= date_field_tag 'weather_result[query_date]', (@query_date || Date.current.to_s), class: "mt-1 w-full rounded-md border px-3 py-2" %>
   </div>
 
   <div>

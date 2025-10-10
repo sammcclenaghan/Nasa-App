@@ -140,7 +140,6 @@ def probability_calculator(data) -> [float]:
             1,
         )
     )
-
     return probabilities
 
 

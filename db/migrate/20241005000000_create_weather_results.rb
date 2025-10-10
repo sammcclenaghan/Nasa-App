@@ -11,6 +11,6 @@ class CreateWeatherResults < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :weather_results, [:lat, :lon, :day_of_year], name: "index_weather_results_on_coordinates_and_day"
+    add_index :weather_results, [ :lat, :lon, :day_of_year ], name: "index_weather_results_on_coordinates_and_day"
   end
 end

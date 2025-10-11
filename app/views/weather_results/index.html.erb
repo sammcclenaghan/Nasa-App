@@ -10,19 +10,6 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
     <!-- Left Column - Map Section -->
     <div class="space-y-4">
-      <div class="flex items-center space-x-4 mb-4">
-        <button class="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-          </svg>
-          <span>Drop Pin</span>
-        </button>
-        <label class="flex items-center space-x-2">
-          <input type="checkbox" class="rounded border-gray-300">
-          <span class="text-gray-700">Draw Boundary</span>
-        </label>
-      </div>
-
       <div class="relative bg-gray-200 rounded-lg overflow-hidden" style="height: 500px;">
         <div id="map"
              data-controller="map"
@@ -121,6 +108,9 @@
     </div>
   </div>
 
+  <div class="mt-6 rounded-md bg-blue-50 border border-blue-100 p-4 text-sm text-blue-800">
+    <p><strong>Privacy:</strong> Your weather analyses are stored anonymously with a private browser token. Clearing cookies or switching browsers/devices will reset your saved results. No account or personal data is stored.</p>
+  </div>
   <section>
     <h2 class="mb-4 text-xl font-semibold">Recent results</h2>
     <div id="weather_results" class="space-y-4">

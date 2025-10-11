@@ -6,8 +6,10 @@ class WeatherResult < ApplicationRecord
   validates :lat, :lon, :day_of_year, presence: true
   validates :lat, :lon, numericality: true
   validates :day_of_year, numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: 366 }
+  validates :visitor_token, presence: true
 
   scope :recent_first, -> { order(created_at: :desc) }
+  scope :for_visitor, ->(token) { where(visitor_token: token) }
 
   after_create_commit -> { broadcast_prepend_later_to :weather_results, partial: "weather_results/weather_result", locals: { weather_result: self }, target: "weather_results" }
   after_update_commit -> { broadcast_replace_later_to :weather_results, partial: "weather_results/weather_result", locals: { weather_result: self } }

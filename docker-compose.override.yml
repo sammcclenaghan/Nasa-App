@@ -1,26 +1,29 @@
-version: "3.9"
-
 services:
   web:
-    command: ./bin/dev
     environment:
       - RAILS_ENV=development
-      - RAILS_LOG_TO_STDOUT=true
+      - BUNDLE_WITHOUT=
+      - RAILS_SERVE_STATIC_FILES=true
     volumes:
       - .:/rails
-      - /rails/node_modules
-      - /rails/tmp
-      - /rails/log
-      - /rails/public/assets
-    stdin_open: true
-    tty: true
+    ports:
+      - "3000:3000"
+
+  css:
+    build: .
+    command: bin/rails tailwindcss:watch
+    environment:
+      - RAILS_ENV=development
+      - BUNDLE_WITHOUT=
+      - DATABASE_URL=mysql2://root:password@db:3306/nasa_app_development
+    volumes:
+      - .:/rails
+    depends_on:
+      - db
 
   worker:
-    volumes:
-      - .:/rails
-      - /rails/node_modules
-      - /rails/tmp
-      - /rails/log
     environment:
       - RAILS_ENV=development
-      - RAILS_LOG_TO_STDOUT=true
+      - BUNDLE_WITHOUT=
+    volumes:
+      - .:/rails

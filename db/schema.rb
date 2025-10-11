@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2024_10_05_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_11_090000) do
   create_table "users", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.string "username", null: false
     t.string "email", null: false
@@ -37,6 +37,8 @@ ActiveRecord::Schema[8.0].define(version: 2024_10_05_000001) do
     t.string "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "visitor_token"
     t.index ["lat", "lon", "day_of_year"], name: "index_weather_results_on_coordinates_and_day"
+    t.index ["visitor_token"], name: "index_weather_results_on_visitor_token"
   end
 end

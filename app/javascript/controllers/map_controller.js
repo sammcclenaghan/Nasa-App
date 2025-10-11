@@ -15,7 +15,22 @@ export default class extends Controller {
 
   disconnect() {
     if (this.map) {
-      this.map.remove();
+      try {
+        this.map.remove();
+      } catch (e) {
+        // ignore removal errors
+      }
+      this.map = null;
+    }
+
+    // Remove the resize listener we added during connect/initialize
+    if (this._resizeHandler) {
+      try {
+        window.removeEventListener("resize", this._resizeHandler);
+      } catch (e) {
+        // ignore
+      }
+      this._resizeHandler = null;
     }
   }
 
@@ -57,7 +72,7 @@ export default class extends Controller {
         maxZoom: 19,
       }).addTo(this.map);
 
-      // Initialize the feature group to store editable layers
+      // Expose the
       this.drawnItems = new L.FeatureGroup();
       this.map.addLayer(this.drawnItems);
 
@@ -136,6 +151,39 @@ export default class extends Controller {
       });
 
       console.log("Map initialized successfully!");
+
+      // Ensure Leaflet recalculates the map size after initialization. When the map
+      // is initialized while its container is hidden or layout isn't settled
+      // (common in containers with sidebars / flex layout in Docker/dev differences),
+      // Leaflet can end up with a 0-sized map. Invalidate size after a short delay
+      // and also on window resize.
+      try {
+        // Small timeout to allow the DOM/CSS to settle (helps with layout changes
+        // introduced by Tailwind/containers/etc).
+        setTimeout(() => {
+          try {
+            if (this.map && typeof this.map.invalidateSize === "function") {
+              this.map.invalidateSize({ animate: false });
+            }
+          } catch (e) {
+            // no-op
+          }
+        }, 200);
+      } catch (e) {
+        // no-op
+      }
+
+      // Store a named resize handler so we can remove it on disconnect()
+      this._resizeHandler = () => {
+        try {
+          if (this.map && typeof this.map.invalidateSize === "function") {
+            this.map.invalidateSize({ animate: false });
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      window.addEventListener("resize", this._resizeHandler);
     } catch (error) {
       console.error("Error initializing map:", error);
     }
